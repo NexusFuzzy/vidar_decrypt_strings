@@ -8,12 +8,19 @@
 debug_counter = 0
 debug_entries_to_show = 20
 
-def xor(part_1, part_2):   
+def xor(part_1, part_2):
    output = ""
    c = 0
-   for s in part_1:
-       output += chr(int(s) ^ ord(str(part_2[c])))
-       c+=1
+
+   if len(str(part_2[c])) == 1:
+       for s in part_1:
+           output += chr(int(s) ^ ord(str(part_2[c])))
+           c+=1
+   else:
+       for s in part_1:
+           output += chr(int(s) ^ int(part_2[c]))
+           c+=1
+   
    return output
    
 
@@ -69,19 +76,31 @@ for x in getReferencesTo(toAddr("func_decrypt_string")):
                 val_1 = output
                 string_extracted = True
         except Exception as ex:
-            pass    
-    
-    #print("[*] Extracted string 1: " + str(val_1))
+            pass   
 
     # Now we get the second part for the decryption routine
     prev_instr = getInstructionBefore(toAddr(instr_addr.toString()))
     instr_addr = prev_instr.getAddress()
     print("[*] Address of string 2: " + prev_instr.getOpObjects(0)[0].toString())
-    val_2 = list(getDataAt(toAddr(prev_instr.getOpObjects(0)[0].toString())).getValue())
-    #print("[*] Extracted string 2: " + str(val_2))
+    string_2_extracted = False
+    try:
+        val_2 = list(getDataAt(toAddr(prev_instr.getOpObjects(0)[0].toString())).getValue())
+        string_2_extracted = True
+    except Exception as ex:
+        pass
+
+    if not string_2_extracted:
+        try:
+            key_addr = toAddr(prev_instr.getDefaultOperandRepresentation(0))
+            output = get_string(key_addr, length)
+            if len(output) == length:
+                val_1 = output
+                string_2_extracted = True
+        except Exception as ex:
+            pass 
 
     print("[*] Decrypted string: " + xor(val_1, val_2))
-    
+    print("\n")
     debug_counter += 1
     if debug_counter > debug_entries_to_show:
         break

@@ -68,7 +68,11 @@ for x in getReferencesTo(toAddr("func_decrypt_string")):
         counter += 1
     
     if len(xor_values) == 2:
-        print(xor(xor_values[0], xor_values[1]))
+        decrypted = xor(xor_values[0], xor_values[1])
+        comment_addr = (getInstructionAfter(getInstructionAfter(x.getFromAddress()))).getAddress()
+        listing = currentProgram.getListing()
+	codeUnit = listing.getCodeUnitAt(comment_addr)
+	codeUnit.setComment(codeUnit.EOL_COMMENT, '[*] ' + decrypted)
     else:
         print("xor_values has wrong size " + str(len(xor_values)))
     print("\n")

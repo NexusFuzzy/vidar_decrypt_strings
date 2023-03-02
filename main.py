@@ -6,7 +6,7 @@
 #@toolbar 
 
 debug_counter = 0
-debug_entries_to_show = 2
+debug_entries_to_show = 20
 
 def xor(part_1, part_2):   
    output = ""
@@ -32,10 +32,16 @@ for x in getReferencesTo(toAddr("func_decrypt_string")):
     length = 0
     val_1 = []
     val_2 = []
-
+    print("[*] Found function call at " + x.getFromAddress().toString())
     ref_addr = x.getFromAddress().toString()
     prev_instr = getInstructionBefore(toAddr(ref_addr))
     instr_addr = prev_instr.getAddress()
+
+    # For every subsequent call we have to skip one
+    # ( MOV [DAT_xxx],EAX)   
+    if debug_counter > 0:
+        prev_instr = getInstructionBefore(instr_addr)
+        instr_addr = prev_instr.getAddress()
     
     # Vidar uses multiple possibilities to pass the length of the string
     # to the decryption function so we have to make some destinctions

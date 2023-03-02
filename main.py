@@ -5,9 +5,6 @@
 #@menupath 
 #@toolbar 
 
-debug_counter = 0
-debug_entries_to_show = 20
-
 def xor(part_1, part_2):
    output = ""
    c = 0
@@ -20,88 +17,60 @@ def xor(part_1, part_2):
        for s in part_1:
            output += chr(int(s) ^ int(part_2[c]))
            c+=1
-   
    return output
-   
 
 def get_string(addr, size):
-    output = []
-    for offset in range(size):
-        output.append(getByte(addr))
-        #print("get_string: " + chr(getByte(addr)))
-	addr = addr.add(1)
-    return output
-
-print("[*] Deobfuscating strings")
+    try:
+        output = []
+        for offset in range(size):
+            output.append(getByte(addr))
+	    addr = addr.add(1)
+        return output
+    except:
+        # Sometimes we try to read bytes where there aren't any.
+        # We return an empty array if this is the case
+        output = []
+        return output
 
 for x in getReferencesTo(toAddr("func_decrypt_string")):
-
     length = 0
-    val_1 = []
-    val_2 = []
+    xor_values = []
     print("[*] Found function call at " + x.getFromAddress().toString())
     ref_addr = x.getFromAddress().toString()
     prev_instr = getInstructionBefore(toAddr(ref_addr))
     instr_addr = prev_instr.getAddress()
 
-    # For every subsequent call we have to skip one
-    # ( MOV [DAT_xxx],EAX)   
-    if debug_counter > 0:
-        prev_instr = getInstructionBefore(instr_addr)
-        instr_addr = prev_instr.getAddress()
+    counter = 0
+    xor_values = []
+    while counter <= 3:
+
+        value_found = False
+        try:
+            if "ECX" in prev_instr.getOpObjects(0)[0].toString():
+                length = int(prev_instr.getOpObjects(1)[0].toString(), 16)
+                print("Found length: " + str(length))
+                value_found = True 
+        except:
+            pass
+
+        if not value_found:
+            try:
+                key_addr = prev_instr.getOpObjects(0)[0].toString()
+                print("Possible string is at: " + key_addr )
+                output = get_string(toAddr(key_addr), length)
+                if len(output) == length and length != 0:
+                    xor_values.append(output)
+            except Exception as ex:
+                pass
+        
+
+        prev_instr = getInstructionBefore(prev_instr.getAddress())
+        counter += 1
     
-    # Vidar uses multiple possibilities to pass the length of the string
-    # to the decryption function so we have to make some destinctions
-    if prev_instr.getOpObjects(0)[0].toString() == "ECX":
-       length = int(prev_instr.getOpObjects(1)[0].toString(), 16)
-       print("[*] Got length for string: " + str(length))
-
-    # Now we get the first part for the decryption routine
-    prev_instr = getInstructionBefore(toAddr(instr_addr.toString()))
-    instr_addr = prev_instr.getAddress()
-    print("[*] Address of string 1: " + prev_instr.getOpObjects(0)[0].toString())
-    # The first string can be passed in different varieties so we try some of them
-    string_extracted = False
-    try:
-        val_1 = getDataAt(prev_instr.getOpObjects(0)[0].toString()).getValue()
-        string_extracted = True
-    except:
-        pass
-
-    if not string_extracted:
-        try:
-            key_addr = toAddr(prev_instr.getDefaultOperandRepresentation(0))
-            output = get_string(key_addr, length)
-            if len(output) == length:
-                val_1 = output
-                string_extracted = True
-        except Exception as ex:
-            pass   
-
-    # Now we get the second part for the decryption routine
-    prev_instr = getInstructionBefore(toAddr(instr_addr.toString()))
-    instr_addr = prev_instr.getAddress()
-    print("[*] Address of string 2: " + prev_instr.getOpObjects(0)[0].toString())
-    string_2_extracted = False
-    try:
-        val_2 = list(getDataAt(toAddr(prev_instr.getOpObjects(0)[0].toString())).getValue())
-        string_2_extracted = True
-    except Exception as ex:
-        pass
-
-    if not string_2_extracted:
-        try:
-            key_addr = toAddr(prev_instr.getDefaultOperandRepresentation(0))
-            output = get_string(key_addr, length)
-            if len(output) == length:
-                val_1 = output
-                string_2_extracted = True
-        except Exception as ex:
-            pass 
-
-    print("[*] Decrypted string: " + xor(val_1, val_2))
+    if len(xor_values) == 2:
+        print(xor(xor_values[0], xor_values[1]))
+    else:
+        print("xor_values has wrong size " + str(len(xor_values)))
     print("\n")
-    debug_counter += 1
-    if debug_counter > debug_entries_to_show:
-        break
     
+

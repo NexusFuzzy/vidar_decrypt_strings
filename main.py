@@ -1,10 +1,3 @@
-#TODO write a description for this script
-#@author 
-#@category _NEW_
-#@keybinding 
-#@menupath 
-#@toolbar 
-
 def xor(part_1, part_2):
    output = ""
    c = 0
@@ -35,6 +28,7 @@ def get_string(addr, size):
 for x in getReferencesTo(toAddr("func_decrypt_string")):
     length = 0
     xor_values = []
+
     print("[*] Found function call at " + x.getFromAddress().toString())
     ref_addr = x.getFromAddress().toString()
     prev_instr = getInstructionBefore(toAddr(ref_addr))
@@ -42,9 +36,20 @@ for x in getReferencesTo(toAddr("func_decrypt_string")):
 
     counter = 0
     xor_values = []
+    string_position = ""
+
     while counter <= 3:
 
         value_found = False
+
+        try:
+            if "EAX" in prev_instr.getOpObjects(1)[0].toString():
+                string_position = prev_instr.getOpObjects(0)[0].toString()
+                print("Found string position: " + string_position)
+                value_found = True 
+        except:
+            pass
+
         try:
             if "ECX" in prev_instr.getOpObjects(0)[0].toString():
                 length = int(prev_instr.getOpObjects(1)[0].toString(), 16)
@@ -69,10 +74,16 @@ for x in getReferencesTo(toAddr("func_decrypt_string")):
     
     if len(xor_values) == 2:
         decrypted = xor(xor_values[0], xor_values[1])
-        comment_addr = (getInstructionAfter(getInstructionAfter(x.getFromAddress()))).getAddress()
-        listing = currentProgram.getListing()
-	codeUnit = listing.getCodeUnitAt(comment_addr)
-	codeUnit.setComment(codeUnit.EOL_COMMENT, '[*] ' + decrypted)
+        print("Decrypted: " + decrypted)
+        if string_position != "":
+            comment_addr = toAddr(string_position)
+            listing = currentProgram.getListing()
+	    codeUnit = listing.getCodeUnitAt(comment_addr)
+	    codeUnit.setComment(codeUnit.EOL_COMMENT, '[*] ' + decrypted)
+        else:
+            print("Couldn't add comment since target address of decryption is unknown")
+        
+
     else:
         print("xor_values has wrong size " + str(len(xor_values)))
     print("\n")
